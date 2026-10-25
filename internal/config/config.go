@@ -42,5 +42,9 @@ func MustLoad() *AppConfig {
 		log.Fatal("failed to read configuration file:", err.Error())
 	}
 
+	if port := os.Getenv("PORT"); port != "" {
+		config.HttpServer.Port = port
+	}
+
 	return &config
 }
