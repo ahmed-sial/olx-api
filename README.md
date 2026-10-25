@@ -1,6 +1,6 @@
 # OLX API
 
-A Go API project, currently at the initial scaffolding and configuration stage.
+A Go API project with configuration loading and a basic HTTP server.
 This README documents the implementation so far and should be updated as the
 project develops.
 
@@ -12,12 +12,13 @@ Implemented:
 - Configuration loading with `github.com/ilyakaznacheev/cleanenv`.
 - Configuration file selection through an environment variable or command-line flag.
 - Environment variable overrides for application and HTTP server settings.
+- HTTP server using `http.NewServeMux()`, bound to the configured address and port.
+- `GET /healthz` endpoint returning `200 OK` with a plain-text `ok` body.
 - Make targets for building and running the application.
 
-`cmd/api/main.go` currently contains an empty `main` function. Running the
-application exits without output. Configuration loading is not yet connected to
-startup, and there is no HTTP server, API endpoint, persistence layer, or automated
-test suite yet.
+`cmd/api/main.go` loads configuration with `config.MustLoad()`, creates the mux,
+and starts the HTTP server with a health check at `/healthz`. Unregistered paths
+return `404 Not Found`. There is no persistence layer or automated test suite yet.
 
 ## Requirements
 
@@ -26,29 +27,40 @@ test suite yet.
 
 ## Getting started
 
-Run these commands from the repository root:
+From the repository root, create `config.yaml` using the example in
+[Configuration](#configuration), then run:
 
 ```sh
 go mod download
-make sprint
+CONFIG_PATH=./config.yaml make sprint
 ```
 
-`make sprint` builds `bin/api` and runs it. At the current stage, the process
-immediately exits because the entry point is empty.
+`make sprint` builds `bin/api` and starts the server. Startup logs the configured
+listen address. Press `Ctrl+C` to stop the server.
 
 To build and run separately:
 
 ```sh
 make build
-make run
+CONFIG_PATH=./config.yaml make run
 ```
 
 `make run` runs the existing binary; run `make build` again after changing code.
 Without Make, use:
 
 ```sh
-go run ./cmd/api
+go run ./cmd/api -config_path=./config.yaml
 ```
+
+With the example configuration, check the server from another terminal:
+
+```sh
+curl -i http://127.0.0.1:8080/healthz
+```
+
+The expected response is `200 OK` with `Content-Type: text/plain; charset=utf-8`
+and a body of `ok` followed by a newline. The endpoint reports that the HTTP
+server is responsive.
 
 ## Configuration
 
@@ -78,15 +90,13 @@ When `MustLoad()` is called, it selects the configuration file in this order:
 There is no default file path. Relative paths are resolved from the process's
 working directory.
 
-Once configuration loading is connected to `main`, either of these commands will
-select the local configuration file:
+Either of these commands selects the local configuration file and starts the
+server:
 
 ```sh
 CONFIG_PATH=./config.yaml go run ./cmd/api
 go run ./cmd/api -config_path=./config.yaml
 ```
-
-At present, the empty entry point does not read either option.
 
 ### Settings
 
@@ -95,14 +105,17 @@ The loader reads the file first, then applies environment variable overrides.
 | YAML key | Environment variable | Type | Purpose |
 | --- | --- | --- | --- |
 | `env` | `ENV` | string | Application environment label. |
-| `http_server.address` | `ADDRESS` | string | HTTP server address setting. |
-| `http_server.port` | `PORT` | string | HTTP server port setting. |
+| `http_server.address` | `HTTP_ADDRESS` | string | HTTP server listen address. |
+| `http_server.port` | `HTTP_PORT` | string | HTTP server listen port. |
 
 All three settings are marked as required. Each can be supplied in the file or
 through its environment variable, but a readable configuration file is still
-required. The nested server settings use `ADDRESS` and `PORT` directly, without an
-`HTTP_SERVER_` prefix. Server settings are only configuration data until an HTTP
-server is implemented.
+required. The nested server settings use the `HTTP_` environment variable prefix.
+For example, to override the port:
+
+```sh
+CONFIG_PATH=./config.yaml HTTP_PORT=9090 go run ./cmd/api
+```
 
 ## Project structure
 
@@ -110,7 +123,7 @@ server is implemented.
 .
 ├── cmd/
 │   └── api/
-│       └── main.go          # Application entry point (currently empty)
+│       └── main.go          # Configuration loading, mux, and HTTP server startup
 ├── internal/
 │   └── config/
 │       └── config.go        # Configuration types and MustLoad
