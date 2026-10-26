@@ -15,7 +15,8 @@ type HttpServer struct {
 
 type AppConfig struct {
 	Env        string     `env:"ENV"         yaml:"env"         env-required:"true"`
-	HttpServer HttpServer `env-prefix:"HTTP_" env:"HTTP_SERVER" yaml:"http_server" env-required:"true"`
+	DbUrl      string     `env:"DB_URL"      yaml:"db_url" env-requried:"true"`
+	HttpServer HttpServer `env:"HTTP_SERVER" yaml:"http_server" env-required:"true" env-prefix:"HTTP_"`
 }
 
 func MustLoad() *AppConfig {
