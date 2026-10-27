@@ -14,7 +14,7 @@ func main() {
 	cfg := config.MustLoad()
 
 	log.Printf("database connection in progress")
-	_, err := db.Connect(cfg.DbUrl)
+	db, err := db.Connect(cfg.DbUrl)
 	if err != nil {
 		log.Fatalf("main.db.Connect: %v", err)
 	}
@@ -23,6 +23,7 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", handlers.Health())
+	mux.HandleFunc("GET /listings", handlers.List(db))
 
 	server := &http.Server{
 		Addr:    net.JoinHostPort(cfg.HttpServer.Address, cfg.HttpServer.Port),
